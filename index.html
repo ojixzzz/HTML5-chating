@@ -1,0 +1,154 @@
+<html>
+    <head>
+        <title>Chating</title>
+        <link type="text/css" href="plugin/jquery-ui/jquery-ui.min.css" rel="stylesheet" media="screen" />
+        <link type="text/css" href="plugin/chatbox/jquery.ui.chatbox.css" rel="stylesheet" />
+
+        <script type="text/javascript" src="js/jquery.min.js"></script>
+        <script type="text/javascript" src="plugin/jquery-ui/jquery-ui.min.js"></script>
+
+        <script type="text/javascript">
+
+            var apis_url = 'http://localhost:8080/';
+            var saya = "saya";
+
+            kirimpesan = function(nama, pesan) {
+                $.post( apis_url+'apis/v0/pesan', 
+                    JSON.stringify({   
+                        "nama": nama,
+                        "pesan": pesan
+                    }),
+                    function( data ) 
+                    {
+                        //alert( "Terkirim" + namatujuan);
+                    }, "json"
+                );
+            }
+
+            function addmsg(pengirim, msg)
+            {    
+                if(pengirim==saya)
+                    return;
+
+                var box = $("#chat_div");
+                var e = document.createElement('div');
+                box.append(e);
+
+                var systemMessage = false;
+                peer = pengirim;
+                if (peer) {
+                    var peerName = document.createElement("b");
+                    $(peerName).text(peer + ": ");
+                    e.appendChild(peerName);
+                } else {
+                    systemMessage = true;
+                }
+
+                var msgElement = document.createElement(
+                    systemMessage ? "i" : "span");
+                $(msgElement).text(msg);
+                e.appendChild(msgElement);
+                $(e).addClass("ui-chatbox-msg");
+                $(e).css("maxWidth", $(box).width());
+                box.scrollTop(box.prop("scrollHeight"));
+            }
+
+            $(document).ready(function(){
+                $('#txtChat').keydown(function(event) {
+                    if (event.keyCode && event.keyCode == $.ui.keyCode.ENTER) {
+                        msg = $.trim($(this).val());
+                        if (msg.length > 0) {
+                            if(saya=='saya'){
+                                alert('Login dulu ye!');
+                            }else{
+                                addmsg(saya+" [me]", msg);
+                                kirimpesan(saya, msg);
+                            }
+                        }
+                        $(this).val('');
+                        return false;
+                    }
+                });
+                addmsg("system", "Selamat datang");
+
+                var evtSrc = new EventSource( apis_url+'apis/v0/pesan' );
+                
+                evtSrc.addEventListener('init', function(e) {
+                    console.log(e.data);
+                }, false);
+
+                evtSrc.addEventListener('error', function(e) {
+                    if (e.readyState == EventSource.CLOSED) {
+                        console.log('KONEKSI DITUTUP');
+                    }
+                    else if( e.readyState == EventSource.OPEN) {
+                        console.log("KONEKSI DIBUKA");
+                    }
+                }, false);
+
+                evtSrc.addEventListener('delta', function(e) {
+                    var data = jQuery.parseJSON( e.data );
+                    if(data) {
+                        addmsg(data.nama, data.pesan);
+                    }
+                }, false);
+            });
+
+            (function(d, s, id) {
+            var js, fjs = d.getElementsByTagName(s)[0];
+            if (d.getElementById(id)) return;
+            js = d.createElement(s); js.id = id;
+            js.src = "http://connect.facebook.net/en_US/sdk.js";
+            fjs.parentNode.insertBefore(js, fjs);
+            }(document, 'script', 'facebook-jssdk'));
+
+            window.fbAsyncInit = function() {
+                FB.init({
+                    appId      : '931215276924459',
+                    cookie     : true,  // enable cookies to allow the server to access 
+                                        // the session
+                    xfbml      : true,  // parse social plugins on this page
+                    version    : 'v2.2' // use version 2.2
+                });
+
+                FB.getLoginStatus(function(response) {
+                    statusChangeCallback(response);
+                });
+            };
+
+            function checkLoginState() {
+                FB.getLoginStatus(function(response) {
+                  statusChangeCallback(response);
+                });
+            }
+
+            function statusChangeCallback(response) {
+                console.log('statusChangeCallback');
+                console.log(response);
+                if (response.status === 'connected') {
+                    FB.api('/me', function(response) {
+                      console.log('Successful login for: ' + response.name);
+                      saya = response.name;
+                      kirimpesan("system", saya+" masuk ruangan");
+                    });
+                } else {
+                    alert('Login error');
+                }
+            }
+
+        </script>
+    </head>
+    <body>
+        <center>
+        <div style="width: 600px;" class="ui-widget-header ui-corner-top ui-chatbox-titlebar ui-dialog-header"><span>Chating with RESTful API</span></div>
+        <div style="display: block;" class="ui-chatbox-content">
+            <div class="ui-widget-content ui-chatbox-log" style="width: 600px;font-size: 30px;" id="chat_div"></div>
+            <div class="ui-widget-content ui-chatbox-input" style="width: 600px">
+                <fb:login-button scope="public_profile" onlogin="checkLoginState();">
+                </fb:login-button>
+                <textarea id="txtChat" style="width: 282px" class="ui-widget-content ui-chatbox-input-box ui-corner-all"></textarea>
+            </div>
+        </div>
+        </center>
+    </body>
+</html>
